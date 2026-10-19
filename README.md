@@ -1,6 +1,9 @@
 ![Pokémon Living Dex Tracker banner](./repository-open-graph.png)
 
-# Pokémon Living Dex Tracker
+<h1 align="center">
+  Pokémon Living Dex Tracker
+  <img src="pokedex.png" alt="Pokédex" height="45" align="center">
+</h1>
 
 **Gotta catch 'em all. And keep one of each.**
 
