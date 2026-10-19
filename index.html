@@ -191,7 +191,27 @@ h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem
 header.top { position: relative; z-index: 6; }
 header.top .head-body { position: relative; }
 .head-tools { position: absolute; top: 18px; right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; align-items: center; }
-.sources { position: relative; }
+.sources { position: static; }   /* panels line up with the right edge of the header buttons */
+.head-tools { flex-wrap: nowrap; }
+.bk-panel { width: min(360px, calc(100vw - 32px)); display: grid; gap: 8px; }
+.bk-panel h3 { margin: 4px 0 -2px; }
+.bk-panel h3:not(:first-child) { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.bk-note { margin: 0; font-size: .84rem; color: var(--muted); line-height: 1.35; }
+.bk-box { width: 100%; resize: vertical; font: .78rem/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); background: var(--screen);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 9px; word-break: break-all; }
+.bk-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.bk-btn { font: inherit; font-size: .84rem; font-weight: 600; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.bk-btn:hover { background: var(--screen); }
+.bk-btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.bk-btn.primary:hover { opacity: .88; }
+.bk-btn.warn { background: var(--snag); border-color: var(--snag); color: #fff; }
+.bk-file { position: relative; overflow: hidden; }
+.bk-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.bk-file:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.bk-msg { margin: 0; font-size: .84rem; font-weight: 600; min-height: 1.2em; }
+.bk-msg.ok { color: var(--wild); } .bk-msg.bad { color: var(--snag); }
+@media (max-width: 480px) { .lights { display: none; } }
+@media (max-width: 420px) { .head-tools { gap: 6px; } .head-tools .intro-btn, .head-tools summary { padding: 6px 10px; font-size: .78rem; } }
 .intro { display: grid; gap: 10px; }
 .intro[hidden] { display: none; }
 header.top.compact .head-body { padding-block: 14px 14px; gap: 6px; }
@@ -389,6 +409,26 @@ footer a { color: inherit; }
     </div>
     <p class="credit">Built with the help of Claude</p>
     <div class="head-tools">
+      <details class="sources backup" id="backup"><summary>Save code</summary>
+        <div class="src-panel bk-panel">
+          <h3>Export from this device</h3>
+          <p class="bk-note">Every game's ticks, copy counts and favorites, in one code. Copy it, send it to yourself, and paste it into Import on your other device.</p>
+          <textarea id="bk-out" class="bk-box" rows="3" readonly aria-label="Your save code"></textarea>
+          <div class="bk-actions">
+            <button type="button" class="bk-btn primary" id="bk-copy">Copy code</button>
+            <button type="button" class="bk-btn" id="bk-dl">Download backup file</button>
+          </div>
+          <h3>Import to this device</h3>
+          <p class="bk-note">Paste a save code, or load a backup file.</p>
+          <textarea id="bk-in" class="bk-box" rows="3" placeholder="Paste a save code here" aria-label="Save code to import"></textarea>
+          <div class="bk-actions">
+            <button type="button" class="bk-btn primary" id="bk-merge">Add to my progress</button>
+            <button type="button" class="bk-btn" id="bk-replace">Replace my progress</button>
+            <label class="bk-btn bk-file">Load backup file<input type="file" id="bk-file" accept=".txt,.json,text/plain,application/json"></label>
+          </div>
+          <p class="bk-msg" id="bk-msg" role="status" aria-live="polite"></p>
+        </div>
+      </details>
       <button type="button" class="intro-btn" id="intro-btn" aria-expanded="true" aria-controls="intro">About</button>
       <details class="sources" id="sources"><summary>Sources</summary><div class="src-panel" id="src-panel"></div></details>
     </div>
@@ -564,13 +604,14 @@ footer a { color: inherit; }
     });
     document.getElementById('sources').open = false;
   }
+  // header dropdowns (Save code, Sources): close on an outside click or Escape, and only one open at a time
+  function dropdowns() { return Array.prototype.slice.call(document.querySelectorAll('details.sources')); }
   document.addEventListener('click', function (e) {
-    var d = document.getElementById('sources');
-    if (d && d.open && !d.contains(e.target)) d.open = false;
+    dropdowns().forEach(function (d) { if (d.open && !d.contains(e.target)) d.open = false; });
   });
   document.addEventListener('keydown', function (e) {
-    var d = document.getElementById('sources');
-    if (e.key === 'Escape' && d && d.open) { d.open = false; d.querySelector('summary').focus(); }
+    if (e.key !== 'Escape') return;
+    dropdowns().forEach(function (d) { if (d.open) { d.open = false; d.querySelector('summary').focus(); } });
   });
 
   // ---- intro: open every time the page loads; About folds it away ----
@@ -1137,6 +1178,117 @@ footer a { color: inherit; }
       }, 800);
     }, shake);
   }
+
+  // ---- save codes: move progress between devices ----
+  // A code is "LDX1." + base64 of {v, t, f: favorites, g: {game: {c: "1-12,16", p: {n: copies}, u: updated}}}
+  function toRanges(list) {
+    var out = [], i = 0;
+    while (i < list.length) { var a = list[i], b = a; while (list[i + 1] === b + 1) { b++; i++; } out.push(a === b ? String(a) : a + '-' + b); i++; }
+    return out.join(',');
+  }
+  function fromRanges(str) {
+    var out = [];
+    String(str || '').split(',').forEach(function (part) {
+      var m = part.trim().match(/^(\d+)(?:-(\d+))?$/); if (!m) return;
+      for (var n = +m[1], e = +(m[2] || m[1]); n <= e && n <= 1000; n++) out.push(n);
+    });
+    return out;
+  }
+  function gameSave(g) {
+    if (g.DEX) return { caught: list_(g), copies: g.copies || {}, updated: g.updated || 0 };
+    try { var x = JSON.parse(store(true, g.ls) || 'null'); if (x) return { caught: x.caught || [], copies: x.copies || {}, updated: +x.updated || 0 }; } catch (e) {}
+    return null;
+  }
+  function makeCode() {
+    var out = { v: 1, t: Date.now(), f: prefs.favs.slice(), g: {} };
+    GAMES.forEach(function (g) {
+      var x = gameSave(g); if (!x) return;
+      var cp = {}; Object.keys(x.copies).forEach(function (k) { if (x.copies[k]) cp[k] = x.copies[k]; });
+      if (!x.caught.length && !Object.keys(cp).length) return;
+      out.g[g.key] = { c: toRanges(x.caught.slice().sort(function (a, b) { return a - b; })), p: cp, u: x.updated };
+    });
+    return 'LDX1.' + btoa(JSON.stringify(out)).replace(/=+$/, '');
+  }
+  function readCode(text) {
+    var t = String(text || '').replace(/\s+/g, '');
+    if (!t) throw new Error('Paste a save code first.');
+    var json;
+    if (t.indexOf('LDX1.') === 0) {
+      try { json = atob(t.slice(5).replace(/-/g, '+').replace(/_/g, '/')); } catch (e) { throw new Error("That code is cut off or mistyped. Copy the whole thing and try again."); }
+    } else if (t.charAt(0) === '{') json = String(text);
+    else throw new Error("That isn't a save code. Codes start with LDX1.");
+    var data; try { data = JSON.parse(json); } catch (e) { throw new Error("That code is cut off or mistyped. Copy the whole thing and try again."); }
+    if (!data || data.v !== 1 || typeof data.g !== 'object') throw new Error("That code is from something else, not this tracker.");
+    return data;
+  }
+  function applyCode(data, replace) {
+    var done = [];
+    Object.keys(data.g).forEach(function (key) {
+      var g = BY_KEY[key], x = data.g[key]; if (!g || !x) return;
+      prepare(g);
+      var max = g.DEX.length, inc = fromRanges(x.c).filter(function (n) { return n >= 1 && n <= max; });
+      var cp = {}; Object.keys(x.p || {}).forEach(function (k) { var v = Math.max(0, Math.min(9, +x.p[k] || 0)); if (v && +k >= 1 && +k <= max) cp[k] = v; });
+      if (replace) { g.caught = {}; g.copies = {}; }
+      inc.forEach(function (n) { g.caught[n] = true; });
+      Object.keys(cp).forEach(function (k) { g.copies[k] = replace ? cp[k] : Math.max(g.copies[k] || 0, cp[k]); });
+      g.updated = Date.now();
+      if (g.rows) g.DEX.forEach(function (d) { d.parts.cb.checked = !!g.caught[d.n]; paintCopies(g, d); });
+      saveLocal(g); queueCloud(g);
+      done.push(g.label + ' ' + list_(g).length);
+    });
+    if (Array.isArray(data.f)) {
+      var favs = data.f.filter(function (k) { return BY_KEY[k]; });
+      prefs.favs = replace ? favs : prefs.favs.concat(favs.filter(function (k) { return prefs.favs.indexOf(k) === -1; }));
+      prefs.updated = Date.now(); savePrefs(); orderTabs(); if (G) seeTab(G.key);
+    }
+    render();
+    return done;
+  }
+  (function () {
+    var box = document.getElementById('backup'), out = document.getElementById('bk-out'), inp = document.getElementById('bk-in');
+    var msg = document.getElementById('bk-msg'), rep = document.getElementById('bk-replace'), armed = null;
+    function say(t, ok) { msg.textContent = t; msg.className = 'bk-msg ' + (ok ? 'ok' : 'bad'); }
+    function disarm() { clearTimeout(armed); armed = null; rep.textContent = 'Replace my progress'; rep.classList.remove('warn'); }
+    box.addEventListener('toggle', function () { if (box.open) { out.value = makeCode(); msg.textContent = ''; disarm(); } });
+    document.getElementById('bk-copy').addEventListener('click', function () {
+      out.value = makeCode();
+      function fallback() { out.focus(); out.select(); say('Selected. Press copy on your keyboard or phone.', true); }
+      try { navigator.clipboard.writeText(out.value).then(function () { say('Copied. Paste it into Import on your other device.', true); }, fallback); } catch (e) { fallback(); }
+    });
+    document.getElementById('bk-dl').addEventListener('click', function () {
+      var d = new Date(), stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([makeCode()], { type: 'text/plain' }));
+      a.download = 'living-dex-backup-' + stamp + '.txt';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      say('Backup file saved.', true);
+    });
+    function run(replace) {
+      try {
+        var done = applyCode(readCode(inp.value), replace);
+        say(done.length ? (replace ? 'Replaced. ' : 'Added. ') + 'Caught now: ' + done.join(', ') + '.' : 'That code had no ticks in it.', !!done.length);
+        if (done.length) inp.value = '';
+      } catch (e) { say(e.message, false); }
+    }
+    document.getElementById('bk-merge').addEventListener('click', function () { disarm(); run(false); });
+    rep.addEventListener('click', function () {
+      if (!armed) {
+        try { readCode(inp.value); } catch (e) { say(e.message, false); return; }
+        rep.textContent = 'Tap again to replace'; rep.classList.add('warn');
+        say("This clears this device's ticks for every game in the code, then loads the code.", false);
+        armed = setTimeout(disarm, 5000); return;
+      }
+      disarm(); run(true);
+    });
+    document.getElementById('bk-file').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function () { inp.value = String(r.result || '').trim(); say('File loaded. Choose Add or Replace.', true); };
+      r.onerror = function () { say("Couldn't read that file.", false); };
+      r.readAsText(f); e.target.value = '';
+    });
+  })();
 
   var start = (location.hash || '').replace('#', '');
   if (!BY_KEY[start]) start = store(true, 'living-dex-game');
