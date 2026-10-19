@@ -187,7 +187,6 @@ body[data-game="white2"] { --shell: #f3ece4; --shell-ink: #22201d; --accent: #c4
 h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 4vw, 2.1rem); letter-spacing: .02em; margin: 0; text-wrap: balance; }
 .lede { margin: 0; max-width: 68ch; opacity: .93; font-size: .95rem; }
 .tick { margin: 0; font-weight: 700; font-size: 1rem; }
-.credit { margin: -6px 0 0; font-style: italic; font-weight: 300; font-size: .85rem; opacity: .7; }
 header.top { position: relative; z-index: 6; }
 header.top .head-body { position: relative; }
 .head-tools { position: absolute; top: 18px; right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; align-items: center; }
@@ -215,7 +214,6 @@ header.top .head-body { position: relative; }
 .intro { display: grid; gap: 10px; }
 .intro[hidden] { display: none; }
 header.top.compact .head-body { padding-block: 14px 14px; gap: 6px; }
-header.top.compact .credit { margin: 0; }
 .intro-btn { font: inherit; background: none; color: inherit; }
 .intro-btn, .sources summary { list-style: none; cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: .82rem; letter-spacing: .03em;
   padding: 6px 12px; border-radius: 999px; border: 1px solid currentColor; opacity: .85; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
@@ -407,7 +405,6 @@ footer a { color: inherit; }
     <p class="lede">All <span class="dexn">493</span> National Dex entries with one way to get each in Pokémon <span class="gname">Platinum</span>, in your order of preference: catch it wild, then evolve, then breed. When <span class="gname">Platinum</span> can't do it, the entry says which other game to get it from and where. Each catch shows how many copies you need and what they evolve or breed into. Each game keeps its own progress.</p>
     <p class="tick">Tick the Poké Ball when it's in your boxes.</p>
     </div>
-    <p class="credit">Built with the help of Claude</p>
     <div class="head-tools">
       <details class="sources backup" id="backup"><summary>Save code</summary>
         <div class="src-panel bk-panel">
