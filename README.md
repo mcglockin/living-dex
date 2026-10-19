@@ -2,7 +2,7 @@
 
 <h1 align="center">
   Pokémon Living Dex Tracker
-  <img src="pokedex.png" alt="Pokédex" height="45" align="center">
+  <img src="pokedex.png" alt="Pokédex" height="72" align="bottom">
 </h1>
 
 **Gotta catch 'em all. And keep one of each.**
