@@ -312,6 +312,21 @@ main .wrap { padding-block: 14px 40px; }
 .from { font-size: .84rem; color: var(--muted); background: var(--screen); border-radius: 6px; padding: 4px 8px; }
 .from b { color: var(--ink); font-weight: 700; }
 .used { font-size: .86rem; color: var(--breed); font-weight: 600; }
+/* personal notes */
+.note-btn { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 2px 8px 2px 6px; font: inherit; font-size: .76rem; font-weight: 600;
+  color: var(--muted); background: none; border: 1px dashed var(--line); border-radius: 999px; cursor: pointer; }
+.note-btn svg { width: 12px; height: 12px; }
+.note-btn:hover, .note-btn[aria-expanded="true"] { color: var(--ink); border-color: var(--muted); }
+.note-btn.has { color: var(--accent); border-style: solid; border-color: currentColor; }
+.mynote { margin-top: 4px; }
+.mynote-text { margin: 0; padding: 6px 10px; border-left: 3px solid var(--accent); background: var(--screen); border-radius: 0 6px 6px 0;
+  font-size: .88rem; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; }
+.mynote-edit { display: grid; gap: 6px; }
+.mynote-edit textarea { width: 100%; resize: vertical; min-height: 64px; font: inherit; font-size: .9rem; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--accent); border-radius: 8px; padding: 7px 9px; }
+.mynote-bar { display: flex; align-items: center; gap: 6px; }
+.mynote-left { flex: 1; font-size: .76rem; color: var(--muted); }
+.mynote-bar .bk-btn { padding: 5px 10px; font-size: .8rem; }
 .filter-hint { font-size: .78rem; color: var(--muted); align-self: center; }
 .c-no { color: var(--no); background: var(--no-bg); }
 .info { min-width: 0; display: grid; gap: 3px; }
@@ -689,11 +704,12 @@ footer a { color: inherit; }
     g.DEX = DEX;
     g.obtainable = DEX.filter(function (d) { return d.g !== 'no'; }).length;
     g.events = DEX.length - g.obtainable;
-    g.caught = {}; g.copies = {}; g.updated = 0;
+    g.caught = {}; g.copies = {}; g.notes = {}; g.updated = 0;
     try {
       var saved = JSON.parse(store(true, g.ls) || '{}');
       (saved.caught || []).forEach(function (n) { g.caught[n] = true; });
       if (saved.copies && typeof saved.copies === 'object') g.copies = saved.copies;
+      if (saved.notes && typeof saved.notes === 'object') g.notes = saved.notes;
       g.updated = +saved.updated || 0;
     } catch (e) {}
     g.rows = null; g.docRef = null; g.timer = null; g.cloudLoaded = false;
@@ -745,6 +761,7 @@ footer a { color: inherit; }
       info.appendChild(parts.needBox);
     }
     if (d.usedFor) info.appendChild(el('div', 'used', d.usedFor));
+    info.appendChild(d.parts.noteBox);
     if (alts.length) { var ul = el('ul', 'alt'); alts.forEach(function (a) { ul.appendChild(el('li', null, a)); }); info.appendChild(ul); }
     paintFrom(d);
     var lv = parts.lv; lv.textContent = v.level || '';
@@ -780,6 +797,7 @@ footer a { color: inherit; }
       var lv = el('div', 'lv');
       var chipsRow = el('span', 'chips-row');
       d.parts = { chips: chipsRow, info: info, lv: lv, cb: cb, pips: [] };
+      buildNote(g, d);
       if (d.need > 1) {
         // ×N opens the copies note; the dots tally how many you have (the one you keep counts)
         var copies = el('span', 'copies');
@@ -801,12 +819,61 @@ footer a { color: inherit; }
         d.parts.copies = copies; d.parts.needBox = box;
       }
       name.appendChild(chipsRow);
+      name.appendChild(d.parts.noteBtn);
       var wrap = el('span', 'ballwrap'); wrap.appendChild(cb);
       row.appendChild(wrap); row.appendChild(num); row.appendChild(name); row.appendChild(info); row.appendChild(lv);
       g.rows[d.n] = row;
       paintCopies(g, d);
     });
   }
+  // ---- personal notes: one per Pokémon per game ----
+  var NOTE_MAX = 500;
+  var PENCIL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.2 2.3a1.6 1.6 0 0 1 2.3 2.3l-7.9 7.9-3.1.8.8-3.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+  function buildNote(g, d) {
+    var box = el('div', 'mynote'), btn = el('button', 'note-btn'); btn.type = 'button';
+    var view = el('p', 'mynote-text'), ed = el('div', 'mynote-edit'); ed.hidden = true;
+    var ta = el('textarea'); ta.rows = 3; ta.maxLength = NOTE_MAX; ta.id = 'note-' + g.key + '-' + d.n;
+    ta.setAttribute('aria-label', 'Your note for ' + d.name); ta.placeholder = 'Nature, where you caught it, what it\'s holding, who to trade…';
+    var bar = el('div', 'mynote-bar'), left = el('span', 'mynote-left');
+    var done = el('button', 'bk-btn primary', 'Done'); done.type = 'button';
+    var del = el('button', 'bk-btn', 'Delete'); del.type = 'button';
+    bar.appendChild(left); bar.appendChild(del); bar.appendChild(done);
+    ed.appendChild(ta); ed.appendChild(bar);
+    box.appendChild(view); box.appendChild(ed);
+    d.parts.noteBox = box; d.parts.noteBtn = btn; d.parts.noteText = view;
+    var t = null;
+    function commit() { clearTimeout(t); setNote(g, d, ta.value); }
+    function open() {
+      ta.value = g.notes[d.n] || ''; box.classList.add('editing'); ed.hidden = false; view.hidden = true; paintNote(g, d);
+      count(); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+    function close() { commit(); box.classList.remove('editing'); ed.hidden = true; paintNote(g, d); btn.focus(); }
+    function count() { var n = ta.value.length; left.textContent = n > NOTE_MAX - 100 ? (NOTE_MAX - n) + ' left' : 'Saves as you type'; }
+    btn.addEventListener('click', function () { if (box.classList.contains('editing')) close(); else open(); });
+    view.addEventListener('click', open);
+    ta.addEventListener('input', function () { count(); clearTimeout(t); t = setTimeout(commit, 400); });
+    ta.addEventListener('keydown', function (e) { if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); close(); } });
+    done.addEventListener('click', close);
+    del.addEventListener('click', function () { ta.value = ''; close(); });
+    paintNote(g, d);
+  }
+  function paintNote(g, d) {
+    var p = d.parts, txt = g.notes[d.n] || '', editing = p.noteBox.classList.contains('editing');
+    p.noteText.textContent = txt; p.noteText.hidden = !txt || editing;
+    p.noteBox.hidden = !txt && !editing;
+    p.noteBtn.innerHTML = PENCIL;
+    p.noteBtn.appendChild(document.createTextNode(txt ? 'Note' : 'Add note'));
+    p.noteBtn.classList.toggle('has', !!txt);
+    p.noteBtn.setAttribute('aria-expanded', editing ? 'true' : 'false');
+    p.noteBtn.setAttribute('aria-label', (txt ? 'Edit your note for ' : 'Add a note for ') + d.name);
+  }
+  function setNote(g, d, text) {
+    var v = String(text || '').slice(0, NOTE_MAX).replace(/\s+$/, '');
+    if ((g.notes[d.n] || '') === v) return;
+    if (v) g.notes[d.n] = v; else delete g.notes[d.n];
+    g.updated = Date.now(); saveLocal(g); queueCloud(g);
+  }
+
   function paintCopies(g, d) {
     if (!d.parts.copies) return;
     var h = g.copies[d.n] || 0;
@@ -938,7 +1005,7 @@ footer a { color: inherit; }
     var read = el('div', 'key-tile key-read');
     read.appendChild(el('span', 'key-title', 'Reading a row'));
     var dl = el('dl');
-    [['×2 ●○', 'copies needed; tap ×2 for why, tap a dot to count'], ['Lv', 'catch level'], ['%', 'encounter odds'], ['Breed', 'parent first']]
+    [['×2 ●○', 'copies needed; tap ×2 for why, tap a dot to count'], ['Lv', 'catch level'], ['%', 'encounter odds'], ['Breed', 'parent first'], ['✎', 'your own notes, also searchable']]
       .forEach(function (p) { dl.appendChild(el('dt', null, p[0])); dl.appendChild(el('dd', null, p[1])); });
     read.appendChild(dl);
     legend.appendChild(read);
@@ -970,7 +1037,7 @@ footer a { color: inherit; }
     G.DEX.forEach(function (d) {
       if (d.cat === 'Breed' && d.src && view(d).key !== d.view.key) fill(d);
       var k = G.key + d.n, onScreen = animating[k] || leaving[k];
-      var base = (state.gen === 'all' || genOf(d.n) === state.gen) && (!q || d.text.indexOf(q) !== -1) && !(state.hide && G.caught[d.n] && !onScreen);
+      var base = (state.gen === 'all' || genOf(d.n) === state.gen) && (!q || d.text.indexOf(q) !== -1 || (G.notes[d.n] || '').toLowerCase().indexOf(q) !== -1) && !(state.hide && G.caught[d.n] && !onScreen);
       if (d.parts.fromBtn) paintFrom(d);
       var tags = tagsOf(d);
       if (base) { tags.forEach(function (t) { counts[t] = (counts[t] || 0) + 1; }); counts.all = (counts.all || 0) + 1; }
@@ -1025,7 +1092,7 @@ footer a { color: inherit; }
 
   // ---- saving: each game has its own cloud doc, plus a local copy ----
   function list_(g) { return Object.keys(g.caught).filter(function (k) { return g.caught[k]; }).map(Number).sort(function (a, b) { return a - b; }); }
-  function saveLocal(g) { store(false, g.ls, JSON.stringify({ caught: list_(g), copies: g.copies, updated: g.updated })); }
+  function saveLocal(g) { store(false, g.ls, JSON.stringify({ caught: list_(g), copies: g.copies, notes: g.notes, updated: g.updated })); }
   function setCaught(g, n, v) {
     if (v) g.caught[n] = true; else delete g.caught[n];
     g.updated = Date.now();
@@ -1036,7 +1103,7 @@ footer a { color: inherit; }
     if (g === G) sync.textContent = 'Saving…';
     clearTimeout(g.timer);
     g.timer = setTimeout(function () {
-      g.docRef.set({ caught: list_(g), copies: g.copies, updated: g.updated || Date.now() }).then(function () { if (g === G) sync.textContent = 'Saved to your account'; })
+      g.docRef.set({ caught: list_(g), copies: g.copies, notes: g.notes, updated: g.updated || Date.now() }).then(function () { if (g === G) sync.textContent = 'Saved to your account'; })
         .catch(function () { if (g === G) sync.textContent = 'Saved on this device only'; g.docRef = null; });
     }, 700);
   }
@@ -1057,9 +1124,10 @@ footer a { color: inherit; }
           var push = local.some(function (n) { return data.caught.indexOf(n) === -1; });
           var cloudNewer = (+data.updated || 0) > (g.updated || 0);
           if (cloudNewer && data.copies && typeof data.copies === 'object') g.copies = data.copies;
-          if (JSON.stringify(data.copies || {}) !== JSON.stringify(g.copies)) push = true;
+          if (cloudNewer && data.notes && typeof data.notes === 'object') g.notes = data.notes;
+          if (JSON.stringify(data.copies || {}) !== JSON.stringify(g.copies) || JSON.stringify(data.notes || {}) !== JSON.stringify(g.notes)) push = true;
           if (cloudNewer) g.updated = +data.updated;
-          g.DEX.forEach(function (d) { d.parts.cb.checked = !!g.caught[d.n]; paintCopies(g, d); });
+          g.DEX.forEach(function (d) { d.parts.cb.checked = !!g.caught[d.n]; paintCopies(g, d); paintNote(g, d); });
           saveLocal(g); if (g === G) render();
           if (push) queueCloud(g);
           else if (g === G) sync.textContent = 'Saved to your account';
@@ -1192,8 +1260,8 @@ footer a { color: inherit; }
     return out;
   }
   function gameSave(g) {
-    if (g.DEX) return { caught: list_(g), copies: g.copies || {}, updated: g.updated || 0 };
-    try { var x = JSON.parse(store(true, g.ls) || 'null'); if (x) return { caught: x.caught || [], copies: x.copies || {}, updated: +x.updated || 0 }; } catch (e) {}
+    if (g.DEX) return { caught: list_(g), copies: g.copies || {}, notes: g.notes || {}, updated: g.updated || 0 };
+    try { var x = JSON.parse(store(true, g.ls) || 'null'); if (x) return { caught: x.caught || [], copies: x.copies || {}, notes: x.notes || {}, updated: +x.updated || 0 }; } catch (e) {}
     return null;
   }
   function makeCode() {
@@ -1201,17 +1269,19 @@ footer a { color: inherit; }
     GAMES.forEach(function (g) {
       var x = gameSave(g); if (!x) return;
       var cp = {}; Object.keys(x.copies).forEach(function (k) { if (x.copies[k]) cp[k] = x.copies[k]; });
-      if (!x.caught.length && !Object.keys(cp).length) return;
+      var nt = {}; Object.keys(x.notes).forEach(function (k) { if (x.notes[k]) nt[k] = x.notes[k]; });
+      if (!x.caught.length && !Object.keys(cp).length && !Object.keys(nt).length) return;
       out.g[g.key] = { c: toRanges(x.caught.slice().sort(function (a, b) { return a - b; })), p: cp, u: x.updated };
+      if (Object.keys(nt).length) out.g[g.key].m = nt;
     });
-    return 'LDX1.' + btoa(JSON.stringify(out)).replace(/=+$/, '');
+    return 'LDX1.' + btoa(unescape(encodeURIComponent(JSON.stringify(out)))).replace(/=+$/, '');
   }
   function readCode(text) {
     var t = String(text || '').replace(/\s+/g, '');
     if (!t) throw new Error('Paste a save code first.');
     var json;
     if (t.indexOf('LDX1.') === 0) {
-      try { json = atob(t.slice(5).replace(/-/g, '+').replace(/_/g, '/')); } catch (e) { throw new Error("That code is cut off or mistyped. Copy the whole thing and try again."); }
+      try { json = decodeURIComponent(escape(atob(t.slice(5).replace(/-/g, '+').replace(/_/g, '/')))); } catch (e) { throw new Error("That code is cut off or mistyped. Copy the whole thing and try again."); }
     } else if (t.charAt(0) === '{') json = String(text);
     else throw new Error("That isn't a save code. Codes start with LDX1.");
     var data; try { data = JSON.parse(json); } catch (e) { throw new Error("That code is cut off or mistyped. Copy the whole thing and try again."); }
@@ -1225,13 +1295,16 @@ footer a { color: inherit; }
       prepare(g);
       var max = g.DEX.length, inc = fromRanges(x.c).filter(function (n) { return n >= 1 && n <= max; });
       var cp = {}; Object.keys(x.p || {}).forEach(function (k) { var v = Math.max(0, Math.min(9, +x.p[k] || 0)); if (v && +k >= 1 && +k <= max) cp[k] = v; });
-      if (replace) { g.caught = {}; g.copies = {}; }
+      var nt = {}; Object.keys(x.m || {}).forEach(function (k) { var v = String(x.m[k] || '').slice(0, NOTE_MAX); if (v && +k >= 1 && +k <= max) nt[k] = v; });
+      if (replace) { g.caught = {}; g.copies = {}; g.notes = {}; }
+      Object.keys(nt).forEach(function (k) { if (replace || !g.notes[k]) g.notes[k] = nt[k]; });
       inc.forEach(function (n) { g.caught[n] = true; });
       Object.keys(cp).forEach(function (k) { g.copies[k] = replace ? cp[k] : Math.max(g.copies[k] || 0, cp[k]); });
       g.updated = Date.now();
-      if (g.rows) g.DEX.forEach(function (d) { d.parts.cb.checked = !!g.caught[d.n]; paintCopies(g, d); });
+      if (g.rows) g.DEX.forEach(function (d) { d.parts.cb.checked = !!g.caught[d.n]; paintCopies(g, d); paintNote(g, d); });
       saveLocal(g); queueCloud(g);
-      done.push(g.label + ' ' + list_(g).length);
+      var nn = Object.keys(g.notes).length;
+      done.push(g.label + ' ' + list_(g).length + (nn ? ' (' + nn + (nn === 1 ? ' note' : ' notes') + ')' : ''));
     });
     if (Array.isArray(data.f)) {
       var favs = data.f.filter(function (k) { return BY_KEY[k]; });
