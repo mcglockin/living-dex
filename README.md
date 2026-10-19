@@ -91,7 +91,3 @@ Pokémon Living Dex Tracker is a **noncommercial fan-made community project**. I
 Pokémon names, characters, artwork, sprites, and related trademarks belong to their respective rights holders. Their inclusion here is for reference and identification purposes and does not imply ownership or official authorization.
 
 **No ads. No subscriptions. No paywalls. Just a better way to catch 'em all.**
-
----
-
-*Built with the help of Claude.*
