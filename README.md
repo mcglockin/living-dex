@@ -8,16 +8,20 @@ Pokémon Living Dex Tracker is a free, fan-made checklist and acquisition guide 
 
 The tracker helps you figure out **what to catch, where to find it, how to obtain it, and what you still need** without juggling multiple guides and spreadsheets.
 
+
 <p align="center">
+  ✨
   <a href="https://mcglockin.github.io/living-dex/">
-    ✨ <img
+    <img
       src="https://img.shields.io/badge/OPEN%20LIVING%20DEX%20TRACKER-FFDE00?style=for-the-badge&labelColor=2962FF&color=FFDE00"
       alt="Open Living Dex Tracker"
       height="55"
       align="middle"
-    /> ✨
+    />
   </a>
+  ✨
 </p>
+
 
 
 ## Features
