@@ -10,13 +10,14 @@ The tracker helps you figure out **what to catch, where to find it, how to obtai
 
 
 
+
 <p align="center">
   ✨
   <a href="https://mcglockin.github.io/living-dex/">
     <img
-      src="https://img.shields.io/badge/%E2%96%B6%20OPEN%20LIVING%20DEX%20TRACKER%20%E2%86%97-FFDE00?style=for-the-badge&labelColor=FFDE00&color=FFDE00"
+      src="https://img.shields.io/badge/OPEN%20LIVING%20DEX%20TRACKER-FFDE00?style=for-the-badge&labelColor=2962FF&color=FFDE00"
       alt="Open Living Dex Tracker ↗"
-      height="100"
+      height="55"
       align="middle"
     />
   </a>
