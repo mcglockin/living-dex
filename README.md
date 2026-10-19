@@ -1,6 +1,6 @@
 ![Pokémon Living Dex Tracker banner](./repository-open-graph.png)
 
-<h1 align="center">
+<h1 align="left">
   Pokémon Living Dex Tracker
   <img src="pokedex.png" alt="Pokédex" height="45" align="bottom">
 </h1>
