@@ -518,9 +518,9 @@ body:not(.view-shiny) > #shiny { display: none; }
 #shiny .chip-btn:hover { background: var(--screen); }
 #shiny .chip-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 #shiny .chip-btn[aria-pressed="true"] .dot { box-shadow: 0 0 0 1.5px var(--bg); }
-#shiny .gen-label { font-family: var(--font-display); font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); align-self: center; margin: 0 2px 0 6px; }
-#shiny .gen-label:first-child { margin-left: 0; }
-#shiny .gen-break { flex-basis: 100%; height: 0; }
+#shiny .gen-rows { display: grid; gap: 10px; }
+#shiny .gen-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; align-items: start; }
+#shiny .gen-label { font-family: var(--font-display); font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; padding-top: 9px; }
 
 /* step 2: search */
 #shiny .search { position: relative; }
@@ -2035,9 +2035,12 @@ body:not(.view-shiny) > #shiny { display: none; }
     view.textContent = '';
     // step 1
     var c1 = el('div', 'card'); var h = el('h2'); h.appendChild(el('span', 'step-n', '1')); h.appendChild(document.createTextNode('Game')); c1.appendChild(h);
-    var grid = el('div', 'game-grid'), lastGen = 0;
+    var grid = el('div', 'gen-rows'), lastGen = 0, row = null;
     GAMES.forEach(function (g) {
-      if (g.gen !== lastGen) { if (lastGen) grid.appendChild(el('span', 'gen-break')); grid.appendChild(el('span', 'gen-label', 'Gen ' + g.gen)); lastGen = g.gen; }
+      if (g.gen !== lastGen) {   // one row per generation: label in a fixed column, games beside it
+        var line = el('div', 'gen-row'); line.appendChild(el('span', 'gen-label', 'Gen ' + g.gen));
+        row = el('div', 'game-grid'); line.appendChild(row); grid.appendChild(line); lastGen = g.gen;
+      }
       var b = el('button', 'chip-btn'); b.type = 'button'; b.setAttribute('aria-pressed', String(wiz.g === g.key));
       var d = el('span', 'dot'); d.style.setProperty('--c', g.color); b.appendChild(d); b.appendChild(document.createTextNode(g.label));
       b.addEventListener('click', function () {
@@ -2046,10 +2049,9 @@ body:not(.view-shiny) > #shiny { display: none; }
         var a = gameData(g.key).avail; wiz.t = wiz.t.filter(function (n) { return a[n]; }); wiz.showAll = {};
         renderWizard(true);
       });
-      grid.appendChild(b);
+      row.appendChild(b);
     });
     c1.appendChild(grid);
-    c1.appendChild(el('p', 'note', 'Gen 1 games are left out: Red, Blue and Yellow have no shiny Pokémon.'));
     view.appendChild(c1);
     if (!wiz.g) return;
     // step 2
