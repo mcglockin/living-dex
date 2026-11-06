@@ -449,7 +449,7 @@ body:not(.view-shiny) > #shiny { display: none; }
   --breed: #f29ccd; --breed-bg: #40223a; --evo: #79cfe6; --evo-bg: #17343e; --dual: #93b4ff; --dual-bg: #1d2a45; --no: #a3a9b6; --no-bg: #3a3e45;
   color: var(--ink); color-scheme: dark;
 }
-#shiny button { font: inherit; color: inherit; }
+:where(#shiny) button { font: inherit; color: inherit; }
 #shiny img.px { filter: drop-shadow(0 0 1px rgba(255,255,255,.22)); }
 #shiny .log li.phase img { filter: grayscale(1); }
 
@@ -798,7 +798,7 @@ body:not(.view-shiny) > #shiny { display: none; }
     </div>
     <h1>Shiny Hunts</h1>
     <div class="intro" id="sh-intro">
-      <p class="lede">Pick a game, the Pokémon you're after and where you'll look. Then count every encounter with a click or the space bar. The page works out your odds and your chance of a shiny so far, logs phases (the shinies you weren't after) and keeps finished hunts. Hunts are saved on this device. To move them to another device, use Save code on the Living Dex tab.</p>
+      <p class="lede">Pick a game, the Pokémon you're after and where you'll look. Then count every encounter with a click or the space bar. The page works out your odds and your chance of a shiny so far, logs phases (the shinies you weren't after) and keeps finished hunts. Hunts are saved on this device. Save code gives you one code that carries your hunts and your Living Dex progress to another device.</p>
       <p class="lede">Odds use each game's real rules: 1 in 8,192 from Gen 2 to Gen 5, the Masuda Method for eggs in Gen 4 and 5, Poké Radar chains in Diamond, Pearl and Platinum, and the Shiny Charm in Black 2 and White 2.</p>
     </div>
     <div class="head-tools">
@@ -2655,9 +2655,16 @@ body:not(.view-shiny) > #shiny { display: none; }
 (function () {
   var tabs = document.querySelectorAll('.site-tab');
   function paint() { var s = document.body.classList.contains('view-shiny'); tabs.forEach(function (t) { if ((t.dataset.view === 'shiny') === s) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }); }
+  // one Save code for both tabs: the same panel moves into whichever header is showing
+  function placeBackup() {
+    var bk = document.getElementById('backup'); if (!bk) return;
+    var to = document.querySelector(document.body.classList.contains('view-shiny') ? '#shiny .head-tools' : 'header.top .head-tools');
+    if (to && bk.parentNode !== to) { bk.open = false; to.insertBefore(bk, to.firstChild); }
+  }
   function go(v, push) {
     var was = document.body.classList.contains('view-shiny');
     document.body.classList.toggle('view-shiny', v === 'shiny');
+    placeBackup();
     try { localStorage.setItem('living-dex-view', v); } catch (e) {}
     if (push) try { history.replaceState(null, '', v === 'shiny' ? '#shiny' : location.pathname + location.search); } catch (e) {}
     paint();
@@ -2665,7 +2672,7 @@ body:not(.view-shiny) > #shiny { display: none; }
   }
   tabs.forEach(function (t) { t.addEventListener('click', function (e) { e.preventDefault(); go(t.dataset.view, true); }); });
   window.addEventListener('hashchange', function () { if (location.hash === '#shiny') go('shiny'); else if (location.hash === '#dex') go('dex'); });
-  paint();
+  paint(); placeBackup();
 })();
 </script>
 
